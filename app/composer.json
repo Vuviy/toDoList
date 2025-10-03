@@ -1,0 +1,13 @@
+{
+  "name": "vuviy/todolist",
+  "description": "todolist",
+  "require": {
+
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/"
+    },
+    "files": ["routes/web.php"]
+  }
+}
