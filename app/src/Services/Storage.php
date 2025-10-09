@@ -17,7 +17,7 @@ class Storage
         }
     }
 
-    public function getAll(Model $model): array
+    public function getAll(Model $model, array $filters, array $pagination): array
     {
         $file = $this->path . $model->getFileName();
 
@@ -29,10 +29,79 @@ class Storage
 
         $models = [];
         foreach ($rows as $row) {
-            $models[] = new $model(...array_values($row));
+
+            $include = true;
+
+            if (array_key_exists('search', $filters)) {
+                if (!str_contains($row['title'], $filters['search'])) {
+                    $include = false;
+                }
+            }
+
+            if (array_key_exists('filterCategory', $filters)) {
+                if ((int)$row['category'] !== (int)$filters['filterCategory']) {
+                    $include = false;
+                }
+            }
+
+            if (array_key_exists('filterPriority', $filters)) {
+                if ((int)$row['category'] !== (int)$filters['filterPriority']) {
+                    $include = false;
+                }
+            }
+
+            if ($include) {
+                $models[] = new $model(...array_values($row));
+            }
         }
 
-        return $models;
+        if (array_key_exists('sort', $filters)) {
+            usort($models, function ($a, $b) use ($filters) {
+                $fieldsA = $a->getFields();
+                $fieldsB = $b->getFields();
+
+                switch ($filters['sort']) {
+                    case 'priority_desc':
+                        return $fieldsB['priority'] <=> $fieldsA['priority'];
+                    case 'priority_asc':
+                        return $fieldsA['priority'] <=> $fieldsB['priority'];
+                    case 'date_desc':
+                        return strtotime($fieldsB['date']) <=> strtotime($fieldsA['date']);
+                    case 'date_asc':
+                        return strtotime($fieldsA['date']) <=> strtotime($fieldsB['date']);
+                    case 'title_desc':
+                        return strcasecmp($fieldsB['title'], $fieldsA['title']);
+                    case 'title_asc':
+                        return strcasecmp($fieldsA['title'], $fieldsB['title']);
+                    default:
+                        return 0;
+                }
+            });
+        }
+
+        $page = array_key_exists('page', $pagination) && (int)$pagination['page'] > 0 ? (int)$pagination['page'] : 1;
+        $perPage = 2;
+
+        $total = count($models);
+
+        $pages = max(1, ceil($total / $perPage));
+
+        if ($page > $pages) {
+            $page = $pages;
+        }
+        $offset = ($page - 1) * $perPage;
+
+        $models = array_slice($models, $offset, $perPage);
+
+        return [
+            'data' => $models,
+            'total' => $total,
+            'page' => $page,
+            'perPage' => $perPage,
+            'pages' => ceil($total / $perPage),
+        ];
+
+//        return $models;
     }
 
     public function get(Model $model, string $id): ?Model

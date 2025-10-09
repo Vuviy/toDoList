@@ -15,12 +15,47 @@ class MainController
 
         if (file_exists($viewFile)) {
 
+            $filters = [];
+            $pagination = [];
+            if($_GET){
+                $filters = $this->validateFilters($_GET);
+            }
+
+            if($_GET && array_key_exists('page', $_GET)){
+                $pagination['page'] = (int) $_GET['page'];
+            }
+
             $tasks = new Task();
-            $tasks = $tasks->getAll();
+            $result = $tasks->getAll($filters, $pagination);
+
             include $viewFile;
         } else {
             echo "View not found";
         }
+    }
+
+    private function validateFilters(array $filters): array
+    {
+        $validatetFilters = [];
+
+        if(array_key_exists('search', $filters) && '' !== $filters['search']) {
+            $validatetFilters['search'] = htmlspecialchars(trim($filters['search']), ENT_QUOTES, 'UTF-8');
+        }
+
+        if(array_key_exists('filterCategory', $filters) && '' !== $filters['filterCategory']) {
+            $validatetFilters['filterCategory'] = (int)$filters['filterCategory'];
+        }
+
+        if(array_key_exists('filterPriority', $filters) && '' !== $filters['filterPriority']) {
+            $validatetFilters['filterPriority'] = (int)$filters['filterPriority'];
+        }
+
+        $allowedSorts = ['priority_desc', 'priority_asc', 'date_desc', 'date_asc', 'title_desc', 'title_asc'];
+        if(array_key_exists('sort', $filters) && in_array($filters['sort'], $allowedSorts, true)){
+            $validatetFilters['sort'] = $filters['sort'];
+        }
+
+        return $validatetFilters;
     }
 
     public function delete()

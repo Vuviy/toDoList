@@ -32,10 +32,10 @@ abstract class Model
 
     }
 
-    public function getAll(): array
+    public function getAll(array $filters, array $pagination): array
     {
         $storage = new Storage();
-        return $storage->getAll($this);
+        return $storage->getAll($this, $filters, $pagination);
     }
 
     public function save(): void
