@@ -28,6 +28,7 @@ class Storage
         $rows = json_decode(file_get_contents($file), true) ?? [];
 
         $models = [];
+
         foreach ($rows as $row) {
 
             $include = true;
@@ -38,14 +39,14 @@ class Storage
                 }
             }
 
-            if (array_key_exists('filterCategory', $filters)) {
-                if ((int)$row['category'] !== (int)$filters['filterCategory']) {
+            if (array_key_exists('filter_category', $filters)) {
+                if ((int)$row['category'] !== (int)$filters['filter_category']) {
                     $include = false;
                 }
             }
 
-            if (array_key_exists('filterPriority', $filters)) {
-                if ((int)$row['category'] !== (int)$filters['filterPriority']) {
+            if (array_key_exists('filter_priority', $filters)) {
+                if ((int)$row['priority'] !== (int)$filters['filter_priority']) {
                     $include = false;
                 }
             }
@@ -54,6 +55,7 @@ class Storage
                 $models[] = new $model(...array_values($row));
             }
         }
+
 
         if (array_key_exists('sort', $filters)) {
             usort($models, function ($a, $b) use ($filters) {
@@ -80,7 +82,7 @@ class Storage
         }
 
         $page = array_key_exists('page', $pagination) && (int)$pagination['page'] > 0 ? (int)$pagination['page'] : 1;
-        $perPage = 2;
+        $perPage = 3;
 
         $total = count($models);
 
@@ -100,8 +102,6 @@ class Storage
             'perPage' => $perPage,
             'pages' => ceil($total / $perPage),
         ];
-
-//        return $models;
     }
 
     public function get(Model $model, string $id): ?Model

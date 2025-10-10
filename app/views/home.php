@@ -386,8 +386,8 @@
                     </div>
 
                     <div class="col-3">
-                        <label for="filterCategory">Категорія</label>
-                        <select id="filterCategory" name="filterCategory">
+                        <label for="filter_category">Категорія</label>
+                        <select id="filter_category" name="filter_category">
                             <option value="">Усі категорії</option>
                             <option value="1">Робота</option>
                             <option value="2">Особисте</option>
@@ -396,8 +396,8 @@
                     </div>
 
                     <div class="col-3">
-                        <label for="filterPriority">Пріоритет</label>
-                        <select id="filterPriority" name="filterPriority">
+                        <label for="filter_priority">Пріоритет</label>
+                        <select id="filter_priority" name="filter_priority">
                             <option value="">Усі пріоритети</option>
                             <option value="1">Низький</option>
                             <option value="2">Середній</option>
@@ -426,6 +426,8 @@
             </div>
         </div>
 
+        <div id="error"></div>
+
         <div class="tasks" id="tasksList">
 
             <?php
@@ -433,15 +435,15 @@
                 foreach ($result['data'] as $task) {
                     $categories = [
                         1 => 'Робота',
-                        2 => 'Навчання',
-                        3 => 'Особисте',
+                        2 => 'Особисте',
+                        3 => 'Навчання',
                     ];
 
                     $catName = $categories[$task->getFields()['category']] ?? 'Невідомо';
 
                     $priorities = [
-                        1 => 'Потім зробиш',
-                        2 => 'Нормально',
+                        1 => 'Низький',
+                        2 => 'Середній',
                         3 => 'Терміново',
                     ];
 
@@ -515,14 +517,10 @@
             e.preventDefault();
 
             let update = $(this).serialize().includes('id=');
-            let action = '/form/submit';
+            let action = '/save';
             if (update) {
                 action = '/update';
             }
-
-            console.log(action)
-
-
             $.ajax({
                 url: action,
                 type: 'POST',
@@ -532,8 +530,7 @@
                     location.reload();
                 },
                 error: function (xhr) {
-
-                    $('#result').text('Error: ' + xhr.status);
+                    showError(xhr);
                 }
             });
         });
@@ -553,7 +550,7 @@
                     $(`.task[data-id="${id}"]`).remove();
                 },
                 error: function (xhr) {
-                    $('#result').text('Error: ' + xhr.status);
+                    showError(xhr);
                 }
             });
         });
@@ -582,6 +579,55 @@
                 .attr('id', 'taskId')
                 .attr('value', id)
                 .appendTo('#taskForm');
+        });
+    });
+
+    function showError(xhr){
+        let html = '<ul>';
+
+        try {
+            let response = JSON.parse(xhr.responseText);
+
+            if (response.error && typeof response === 'object') {
+                for (let field in response) {
+                    if (field === 'error') continue;
+
+                    let errors = response[field];
+                    if (Array.isArray(errors)) {
+                        html += `<li><strong>${field}:</strong><ul>`;
+                        errors.forEach(function (msg) {
+                            html += `<li>${msg}</li>`;
+                        });
+                        html += '</ul></li>';
+                    }
+                }
+            } else {
+                html += '<li>Невідома помилка</li>';
+            }
+        } catch (e) {
+            html += '<li>Помилка при обробці відповіді сервера</li>';
+        }
+
+        html += '</ul>';
+
+        $('#error').html(html).css({
+            color: 'red',
+            border: '1px solid #ff7b7b',
+            padding: '10px',
+            background: '#ffe6e6',
+            borderRadius: '5px'
+        }).fadeIn(200);
+    }
+
+    $(function () {
+        $('button[type="reset"]').on('click', function (e) {
+            e.preventDefault(); // щоб не скидало форму стандартно
+
+            // Отримуємо чистий URL без параметрів
+            let cleanUrl = window.location.origin + window.location.pathname;
+
+            // Перенаправляємо без параметрів
+            window.location.href = cleanUrl;
         });
     });
 

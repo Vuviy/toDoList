@@ -3,13 +3,15 @@
 namespace App\Controllers;
 
 use App\DTO\FormData;
+use App\Enums\Sort;
+use App\Http\Request;
 use App\Models\Task;
 use App\Services\PasswordMakerService;
 use App\Services\PasswordVerifyService;
 
 class MainController
 {
-    public function index()
+    public function index(Request $request)
     {
         $viewFile = __DIR__ . '/../../views/home.php';
 
@@ -17,12 +19,13 @@ class MainController
 
             $filters = [];
             $pagination = [];
-            if($_GET){
-                $filters = $this->validateFilters($_GET);
+
+            if ($request->get()) {
+                $filters = $this->validateFilters($request->get());
             }
 
-            if($_GET && array_key_exists('page', $_GET)){
-                $pagination['page'] = (int) $_GET['page'];
+            if (array_key_exists('page', $request->get())) {
+                $pagination['page'] = (int)$request->input('page');
             }
 
             $tasks = new Task();
@@ -38,75 +41,77 @@ class MainController
     {
         $validatetFilters = [];
 
-        if(array_key_exists('search', $filters) && '' !== $filters['search']) {
+        if (array_key_exists('search', $filters) && '' !== $filters['search']) {
             $validatetFilters['search'] = htmlspecialchars(trim($filters['search']), ENT_QUOTES, 'UTF-8');
         }
 
-        if(array_key_exists('filterCategory', $filters) && '' !== $filters['filterCategory']) {
-            $validatetFilters['filterCategory'] = (int)$filters['filterCategory'];
+        if (array_key_exists('filter_category', $filters) && '' !== $filters['filter_category']) {
+            $validatetFilters['filter_category'] = (int)$filters['filter_category'];
         }
 
-        if(array_key_exists('filterPriority', $filters) && '' !== $filters['filterPriority']) {
-            $validatetFilters['filterPriority'] = (int)$filters['filterPriority'];
+        if (array_key_exists('filter_priority', $filters) && '' !== $filters['filter_priority']) {
+            $validatetFilters['filter_priority'] = (int)$filters['filter_priority'];
         }
 
-        $allowedSorts = ['priority_desc', 'priority_asc', 'date_desc', 'date_asc', 'title_desc', 'title_asc'];
-        if(array_key_exists('sort', $filters) && in_array($filters['sort'], $allowedSorts, true)){
-            $validatetFilters['sort'] = $filters['sort'];
+        if (array_key_exists('sort', $filters)) {
+            $sortEnum = Sort::from($filters['sort']);
+            $validatetFilters['sort'] = $sortEnum->value;
         }
 
         return $validatetFilters;
     }
 
-    public function delete()
+    public function delete(Request $request)
     {
-        $data = $_POST;
+        $data = $request->validate([
+            'id' => 'required|int',
+        ]);
 
-        if ('' === $data['id'] || null === $data['id']) {
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['error' => 'id not found']);
-            exit;
-        }
 
         $task = new Task();
         $task->delete($data['id']);
 
-        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Type: application/json; charset=utf-8', true, 200);
         echo json_encode(['success' => 'task deleted']);
         exit;
 
     }
 
-    public function update()
+    public function update(Request $request)
     {
-        $data = $_POST;
+        $data = $request->validate([
+            'id' => 'required|int',
+            'title' => 'required|string',
+            'priority' => 'required|int',
+            'category' => 'required|int',
+            'date' => 'required|date',
+        ]);
 
-        if (array_key_exists('id', $data)) {
-            $task = new Task(
-                id: $data['id'],
-                title: $data['title'],
-                priority: $data['priority'],
-                category: $data['category'],
-                date: $data['date'],
-                status: 'old',
-            );
-            $task->update();
+        $task = new Task(
+            id: $data['id'],
+            title: $data['title'],
+            priority: $data['priority'],
+            category: $data['category'],
+            date: $data['date'],
+            status: 'old',
+        );
+        $task->update();
 
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['success' => 'task updated']);
-            exit;
-        } else {
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['error' => 'id not found']);
-            exit;
-        }
+        header('Content-Type: application/json; charset=utf-8', true, 200);
+        echo json_encode(['success' => 'task updated']);
+        exit;
 
     }
 
 
-    public function submitForm()
+    public function save(Request $request)
     {
-        $data = $_POST;
+        $data = $request->validate([
+            'title' => 'required|string',
+            'priority' => 'required|int',
+            'category' => 'required|int',
+            'date' => 'required|date',
+        ]);
 
         $task = new Task(
             title: $data['title'],
@@ -118,8 +123,7 @@ class MainController
 
         $task->save();
 
-
-        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Type: application/json; charset=utf-8', true, 201);
         echo json_encode([]);
         exit;
 
