@@ -431,8 +431,9 @@
         <div class="tasks" id="tasksList">
 
             <?php
-            if ($result['total'] > 0) {
-                foreach ($result['data'] as $task) {
+
+            if ($pagination['total'] > 0) {
+                foreach ($data as $task) {
                     $categories = [
                         1 => 'Робота',
                         2 => 'Особисте',
@@ -491,16 +492,16 @@
             ?>
         </div>
 
-        <?php if ($result['pages'] > 1): ?>
+        <?php if ($pagination['pages'] > 1): ?>
             <div class="pagination">
-                <?php for ($i = 1; $i <= $result['pages']; $i++): ?>
+                <?php for ($i = 1; $i <= $pagination['pages']; $i++): ?>
                     <?php
                     $query = $_GET;
                     $query['page'] = $i;
                     $queryString = http_build_query($query);
                     ?>
                     <a href="?<?= htmlspecialchars($queryString) ?>"
-                       class="page-link <?= $i == $result['page'] ? 'active' : '' ?>">
+                       class="page-link <?= $i == $pagination['page'] ? 'active' : '' ?>">
                         <?= $i ?>
                     </a>
                 <?php endfor; ?>
@@ -621,12 +622,8 @@
 
     $(function () {
         $('button[type="reset"]').on('click', function (e) {
-            e.preventDefault(); // щоб не скидало форму стандартно
-
-            // Отримуємо чистий URL без параметрів
+            e.preventDefault();
             let cleanUrl = window.location.origin + window.location.pathname;
-
-            // Перенаправляємо без параметрів
             window.location.href = cleanUrl;
         });
     });

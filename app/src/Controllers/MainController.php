@@ -2,63 +2,38 @@
 
 namespace App\Controllers;
 
-use App\DTO\FormData;
-use App\Enums\Sort;
+use App\Base\Container;
+use App\Base\Filter;
 use App\Http\Request;
 use App\Models\Task;
-use App\Services\PasswordMakerService;
-use App\Services\PasswordVerifyService;
 
 class MainController
 {
     public function index(Request $request)
     {
-        $viewFile = __DIR__ . '/../../views/home.php';
+        $filters = [];
+        $pagination = 1;
 
-        if (file_exists($viewFile)) {
-
-            $filters = [];
-            $pagination = [];
-
-            if ($request->get()) {
-                $filters = $this->validateFilters($request->get());
-            }
-
-            if (array_key_exists('page', $request->get())) {
-                $pagination['page'] = (int)$request->input('page');
-            }
-
-            $tasks = new Task();
-            $result = $tasks->getAll($filters, $pagination);
-
-            include $viewFile;
-        } else {
-            echo "View not found";
-        }
-    }
-
-    private function validateFilters(array $filters): array
-    {
-        $validatetFilters = [];
-
-        if (array_key_exists('search', $filters) && '' !== $filters['search']) {
-            $validatetFilters['search'] = htmlspecialchars(trim($filters['search']), ENT_QUOTES, 'UTF-8');
+        if ($request->get()) {
+            $filters = Filter::getFilters($request->get());
         }
 
-        if (array_key_exists('filter_category', $filters) && '' !== $filters['filter_category']) {
-            $validatetFilters['filter_category'] = (int)$filters['filter_category'];
+        if (array_key_exists('page', $request->get())) {
+            $pagination = (int)$request->input('page');
         }
 
-        if (array_key_exists('filter_priority', $filters) && '' !== $filters['filter_priority']) {
-            $validatetFilters['filter_priority'] = (int)$filters['filter_priority'];
-        }
+        $taskObj = new Task();
 
-        if (array_key_exists('sort', $filters)) {
-            $sortEnum = Sort::from($filters['sort']);
-            $validatetFilters['sort'] = $sortEnum->value;
-        }
+        $result = $taskObj
+            ->query()
+            ->filter($filters)
+            ->sort($filters)
+            ->paginate($pagination)
+            ->get();
+        $container = new Container();
 
-        return $validatetFilters;
+        $view = $container->view('home');
+        $view->render($result);
     }
 
     public function delete(Request $request)
@@ -66,7 +41,6 @@ class MainController
         $data = $request->validate([
             'id' => 'required|int',
         ]);
-
 
         $task = new Task();
         $task->delete($data['id']);
@@ -80,7 +54,7 @@ class MainController
     public function update(Request $request)
     {
         $data = $request->validate([
-            'id' => 'required|int',
+            'id' => 'required|string',
             'title' => 'required|string',
             'priority' => 'required|int',
             'category' => 'required|int',
@@ -100,7 +74,6 @@ class MainController
         header('Content-Type: application/json; charset=utf-8', true, 200);
         echo json_encode(['success' => 'task updated']);
         exit;
-
     }
 
 
@@ -126,7 +99,5 @@ class MainController
         header('Content-Type: application/json; charset=utf-8', true, 201);
         echo json_encode([]);
         exit;
-
     }
-
 }
