@@ -5,7 +5,8 @@ namespace App\Controllers;
 use App\Base\Container;
 use App\Base\Filter;
 use App\Http\Request;
-use App\Models\Task;
+use App\Models\TaskActiveRecord;
+use App\ValueObjects\Task\Id;
 
 class MainController
 {
@@ -22,7 +23,7 @@ class MainController
             $pagination = (int)$request->input('page');
         }
 
-        $taskObj = new Task();
+        $taskObj = new TaskActiveRecord();
 
         $result = $taskObj
             ->query()
@@ -30,6 +31,7 @@ class MainController
             ->sort($filters)
             ->paginate($pagination)
             ->get();
+
         $container = new Container();
 
         $view = $container->view('home');
@@ -42,7 +44,7 @@ class MainController
             'id' => 'required|int',
         ]);
 
-        $task = new Task();
+        $task = new TaskActiveRecord();
         $task->delete($data['id']);
 
         header('Content-Type: application/json; charset=utf-8', true, 200);
@@ -61,15 +63,16 @@ class MainController
             'date' => 'required|date',
         ]);
 
-        $task = new Task(
-            id: $data['id'],
-            title: $data['title'],
-            priority: $data['priority'],
-            category: $data['category'],
-            date: $data['date'],
-            status: 'old',
-        );
-        $task->update();
+        $task = new TaskActiveRecord();
+
+        $task->id = new Id($data['id']);
+        $task->title = $data['title'];
+        $task->priority = $data['priority'];
+        $task->category = $data['category'];
+        $task->date = $data['date'];
+        $task->status = $data['status'] ?? 'new';
+
+        $task->save();
 
         header('Content-Type: application/json; charset=utf-8', true, 200);
         echo json_encode(['success' => 'task updated']);
@@ -86,13 +89,13 @@ class MainController
             'date' => 'required|date',
         ]);
 
-        $task = new Task(
-            title: $data['title'],
-            priority: $data['priority'],
-            category: $data['category'],
-            date: $data['date'],
-            status: 'new',
-        );
+        $task = new TaskActiveRecord();
+
+        $task->title = $data['title'];
+        $task->priority = $data['priority'];
+        $task->category = $data['category'];
+        $task->date = $data['date'];
+        $task->status = 'new';
 
         $task->save();
 

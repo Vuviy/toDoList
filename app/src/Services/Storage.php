@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Base\Model;
+use App\Base\ActiveRecordEntity;
 
 class Storage
 {
@@ -41,9 +41,8 @@ class Storage
         return null;
     }
 
-    public function save(Model $model): void
+    public function save(ActiveRecordEntity $model): bool
     {
-
         $file = $this->path . $model->getFileName();
 
         $data = [];
@@ -54,34 +53,36 @@ class Storage
         $data[] = $model->getFields();
 
         file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+        return true;
     }
 
-    public function update(Model $model): bool
+    public function update(ActiveRecordEntity $model): bool
     {
         $file = $this->path . $model->getFileName();
 
         if (!file_exists($file)) {
             return false;
         }
-
         $rows = json_decode(file_get_contents($file), true) ?? [];
-
         $newRows = [];
         foreach ($rows as $row) {
-            if ($row['id'] === $model->getFields()['id']) {
+
+            if ($row['id'] === (string)$model->getFields()['id']) {
+
                 $newRows[] = $model->getFields();
             } else {
                 $newRows[] = $row;
             }
-
         }
         file_put_contents($file, json_encode($newRows, JSON_PRETTY_PRINT));
 
         return true;
     }
 
-    public function delete(Model $model, string $id): bool
+    public function delete(ActiveRecordEntity $model, string $id): bool
     {
+
         $file = $this->path . $model->getFileName();
 
         if (!file_exists($file)) {
