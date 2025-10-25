@@ -41,7 +41,7 @@ class MainController
     public function delete(Request $request)
     {
         $data = $request->validate([
-            'id' => 'required|int',
+            'id' => 'required|string',
         ]);
 
         $task = new TaskActiveRecord();

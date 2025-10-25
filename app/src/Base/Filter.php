@@ -11,15 +11,14 @@ class Filter
         $validatetFilters = [];
 
         foreach ($params as $param => $value) {
-            if('' !== $value && 'sort' !== $param) {
+            if('' !== $value) {
                 $validatetFilters[$param] = htmlspecialchars(trim($value), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
             }
         }
-
-        if (array_key_exists('sort', $params) && '' !== $params['sort']) {
-            $sortEnum = Sort::from($params['sort']);
-            $validatetFilters['sort'] = $sortEnum->value;
-        }
+//        if (array_key_exists('sort', $params) && '' !== $params['sort']) {
+//            $sortEnum = Sort::from($params['sort']);
+//            $validatetFilters['sort'] = $sortEnum->value;
+//        }
 
         return $validatetFilters;
     }

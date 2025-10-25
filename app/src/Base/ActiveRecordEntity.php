@@ -4,16 +4,20 @@ namespace App\Base;
 
 use App\Services\Storage;
 use App\ValueObjects\Task\Id;
+use ReflectionClass;
 
 abstract class ActiveRecordEntity
 {
 //    protected  $id;
-    protected Id $id;
+//    protected Id $id;
     protected array $data = [];
     protected array $fields;
     protected array $pagination = [];
 
+    private array $immutableFields = ['fields'];
+
     abstract static function getFileName(): string;
+    abstract function getSearchFields(): array;
 
     public function getFields(): array
     {
@@ -29,13 +33,16 @@ abstract class ActiveRecordEntity
         return $filtered;
     }
 
-    public function getId(): ?string
-    {
-        return $this->id;
-    }
-
     public function __set(string $name, $value)
     {
+        if (in_array($name, $this->immutableFields)) {
+            return \Exception::class;
+        }
+
+        if (!property_exists($this, $name)) {
+            return \Exception::class;
+        }
+
         $camelCaseName = $this->underscoreToCamelCase($name);
         $this->$camelCaseName = $value;
     }
@@ -57,16 +64,23 @@ abstract class ActiveRecordEntity
         $rows = $storage->getAll(static::getFileName());
 
         $models = [];
+
+        $class = new ReflectionClass(static::class);
+        $props = $class->getProperties();
+
+        $propertiesClass = [];
+        foreach ($props as $prop) {
+            $class = $prop->getType()->getName();
+            $name = $prop->getName();
+            $propertiesClass[$name] = $class;
+        }
+
         foreach ($rows as $row) {
             $model = new static();
 
             foreach ($row as $item => $value) {
-                if ('id' === $item) {
-                    $class = 'App\ValueObjects\Task\\' . ucfirst($item);
-                    $model->{$item} = new $class($value);
-                } else {
-                    $model->{$item} = $value;
-                }
+                $class = $propertiesClass[$item];
+                $model->{$item} = new $class($value);
             }
             $models[] = $model;
         }
@@ -80,16 +94,29 @@ abstract class ActiveRecordEntity
 
         $model = new static();
 
+        $class = new ReflectionClass(static::class);
+        $props = $class->getProperties();
+
+        $propertiesClass = [];
+        foreach ($props as $prop) {
+            $class = $prop->getType()->getName();
+            $name = $prop->getName();
+            $propertiesClass[$name] = $class;
+        }
+
         foreach ($row as $item => $value) {
-            if ('id' === $item) {
-                $class = 'App\ValueObjects\Task\\' . ucfirst($item);
-                $model->{$item} = new $class($value);
-            } else {
-                $model->{$item} = $value;
-            }
+            $class = $propertiesClass[$item];
+            $model->{$item} = new $class($value);
         }
 
         return $model;
+    }
+
+    public function delete(string $id): bool
+    {
+        $storage = new Storage();
+        return $storage->delete($this, $id);
+
     }
 
 
@@ -140,25 +167,21 @@ abstract class ActiveRecordEntity
     {
         $models = [];
 
-//        dd($this->data);
-//        dd(444444);
+        $class = new ReflectionClass(static::class);
+        $props = $class->getProperties();
+
+        $propertiesClass = [];
+        foreach ($props as $prop) {
+            $class = $prop->getType()->getName();
+            $name = $prop->getName();
+            $propertiesClass[$name] = $class;
+        }
+
         foreach ($this->data as $row) {
             $model = new static();
             foreach ($row as $item => $value) {
-                if ('id' === $item) {
-                    $class = 'App\ValueObjects\Task\\' . ucfirst($item);
-
-//                    dd($class, $value);
-
-                    if(is_array($value)) {
-                        dd($row);
-                    }
-
-                    $model->{$item} = new $class($value);
-                } else {
-                    $model->{$item} = $value;
-                }
-
+                $class = $propertiesClass[$item];
+                $model->{$item} = new $class($value);
             }
             $models[] = $model;
         }
@@ -166,5 +189,80 @@ abstract class ActiveRecordEntity
             'data' => $models,
             'pagination' => $this->pagination,
         ];
+    }
+
+    public function filter(array $filters): static
+    {
+        $searchFields = $this->getSearchFields();
+
+        $this->data = array_filter($this->data, function ($row) use ($filters, $searchFields) {
+            if (array_key_exists('search', $filters) && '' !== $filters['search']) {
+                $searchValue = mb_strtolower($filters['search']);
+                $found = false;
+
+                foreach ($searchFields as $field) {
+                    if (array_key_exists($field, $row) && str_contains(mb_strtolower($row[$field]), $searchValue)) {
+                        $found = true;
+                        break;
+                    }
+                }
+
+                if (!$found) {
+                    return false;
+                }
+            }
+
+            foreach ($filters as $key => $value) {
+                if ($key === 'search' || !array_key_exists( str_replace('filter_', '', $key), $row)) {
+                    continue;
+                }
+
+                if ((string)$row[str_replace('filter_', '', $key)] !== (string)$value) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+
+        return $this;
+    }
+
+
+    public function sort(array $filters): static
+    {
+        if (array_key_exists('sort', $filters)) {
+            $sort = $filters['sort'];
+            $direction = 'asc';
+
+            if (str_ends_with($sort, '_desc')) {
+                $direction = 'desc';
+                $field = substr($sort, 0, -5);
+            } elseif (str_ends_with($sort, '_asc')) {
+                $field = substr($sort, 0, -4);
+            } else {
+                $field = $sort;
+            }
+
+            usort($this->data, function ($a, $b) use ($field, $direction) {
+                $valA = $a[$field] ?? null;
+                $valB = $b[$field] ?? null;
+
+                if ($valA === null && $valB === null) {
+                    return 0;
+                }
+
+                if (is_string($valA) && strtotime($valA) !== false) {
+                    $valA = strtotime($valA);
+                }
+                if (is_string($valB) && strtotime($valB) !== false) {
+                    $valB = strtotime($valB);
+                }
+                $result = $valA <=> $valB;
+
+                return $direction === 'desc' ? -$result : $result;
+            });
+        }
+        return $this;
     }
 }
