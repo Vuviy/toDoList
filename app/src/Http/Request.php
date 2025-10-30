@@ -2,6 +2,11 @@
 
 namespace App\Http;
 
+use App\Interface\ValidateInterface;
+use App\Rule\IntegerRule;
+use App\Rule\RequiredRule;
+use App\Rule\StringRule;
+
 class Request
 {
 
@@ -14,6 +19,8 @@ class Request
         private array $files,
         private array $cookie,
         private array $env,
+        ValidateInterface $handler
+
     )
     {
         $this->get = filter_var_array($this->get, FILTER_SANITIZE_FULL_SPECIAL_CHARS) ?? [];
@@ -44,32 +51,39 @@ class Request
             $rulesList = explode('|', $ruleString);
             $value = $this->input($field);
 
+            $reuired = new RequiredRule();
+            $string = new StringRule();
+            $integer = new IntegerRule();
+            $chain = $reuired->setNext($string)->setNext($integer);
             foreach ($rulesList as $rule) {
-                switch ($rule) {
-                    case 'required':
-                        if ($value === null || $value === '') {
-                            $errors[$field][] = "Field {$field} is required.";
-                        }
-                        break;
 
-                    case 'int':
-                        if (!filter_var($value, FILTER_VALIDATE_INT)) {
-                            $errors[$field][] = "Field {$field} must be integer.";
-                        }
-                        break;
+                $result = $handler->handle($food);
 
-                    case 'string':
-                        if (!is_string($value)) {
-                            $errors[$field][] = "Field {$field} must be string.";
-                        }
-                        break;
-
-                    case 'date':
-                        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
-                            $errors[$field][] = "Field {$field} must be date (Y-m-d).";
-                        }
-                        break;
-                }
+//                switch ($rule) {
+//                    case 'required':
+//                        if ($value === null || $value === '') {
+//                            $errors[$field][] = "Field {$field} is required.";
+//                        }
+//                        break;
+//
+//                    case 'int':
+//                        if (!filter_var($value, FILTER_VALIDATE_INT)) {
+//                            $errors[$field][] = "Field {$field} must be integer.";
+//                        }
+//                        break;
+//
+//                    case 'string':
+//                        if (!is_string($value)) {
+//                            $errors[$field][] = "Field {$field} must be string.";
+//                        }
+//                        break;
+//
+//                    case 'date':
+//                        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+//                            $errors[$field][] = "Field {$field} must be date (Y-m-d).";
+//                        }
+//                        break;
+//                }
             }
 
             $data[$field] = htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');

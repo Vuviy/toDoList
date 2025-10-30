@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Base\Container;
 use App\Base\Filter;
+use App\Factory\ViewFactory;
 use App\Http\Request;
 use App\Models\TaskActiveRecord;
 use App\ValueObjects\Task\Id;
@@ -32,9 +33,9 @@ class MainController
             ->paginate($pagination)
             ->get();
 
-        $container = new Container();
-
-        $view = $container->view('home');
+        $container = Container::getInstance();
+        $viewFactory = $container->has(ViewFactory::class);
+        $view =  $viewFactory->make('home');
         $view->render($result);
     }
 
